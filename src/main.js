@@ -88,7 +88,7 @@ function shell() {
       <section id="audience" class="view"><div class="panel">
         <div class="panelhead"><div><h2>Rekod Audience</h2><p>Semua pendaftaran audience daripada setiap talk.</p></div><button class="secondary" id="exportBtn">⇩ Eksport CSV</button></div>
         <div class="toolbar"><input id="audSearch" placeholder="Cari nama, e-mel atau Pusat NADI..."><select id="audTalk"><option value="">Semua talk</option></select></div>
-        <div class="tablewrap"><table><thead><tr><th>Tarikh Daftar</th><th>Nama Penuh</th><th>E-mel</th><th>Tajuk Talk</th><th>Pusat NADI</th><th>ID Talk</th></tr></thead><tbody id="audRows"></tbody></table></div>
+        <div class="tablewrap"><table><thead><tr><th>Tarikh Daftar</th><th>Nama Penuh</th><th>No. Kad Pengenalan</th><th>E-mel</th><th>Tajuk Talk</th><th>Pusat NADI</th><th>ID Talk</th></tr></thead><tbody id="audRows"></tbody></table></div>
       </div></section>
     </main>
   </div>
@@ -140,7 +140,7 @@ function statusLabel(s){return s==="active"?'<span class="pill">Aktif</span>':'<
 async function loadData(){
   const [tRes,aRes]=await Promise.all([
     supabase.from("talks").select("*").order("created_at",{ascending:false}),
-    supabase.from("audience_attendance").select("id,talk_id,full_name,email,created_at").order("created_at",{ascending:false})
+    supabase.from("audience_attendance").select("id,talk_id,full_name,ic_number,email,created_at").order("created_at",{ascending:false})
   ]);
   if(tRes.error) throw tRes.error;
   if(aRes.error) throw aRes.error;
@@ -169,8 +169,8 @@ function renderAudience(){
   sel.innerHTML='<option value="">Semua talk</option>'+talks.map(t=>`<option value="${t.id}">${esc(t.talk_code)} · ${esc(t.title)}</option>`).join("");
   sel.value=old;
   const q=(document.querySelector("#audSearch").value||"").toLowerCase(),id=sel.value;
-  const rows=audience.filter(a=>{const t=talks.find(x=>x.id===a.talk_id)||{};return(!id||a.talk_id===id)&&`${a.full_name} ${a.email} ${t.title||""} ${t.nadi_center||""}`.toLowerCase().includes(q)});
-  document.querySelector("#audRows").innerHTML=rows.map(a=>{const t=talks.find(x=>x.id===a.talk_id)||{};return `<tr><td>${fmtStamp(a.created_at)}</td><td><b>${esc(a.full_name)}</b></td><td>${esc(a.email)}</td><td>${esc(t.title||"-")}</td><td>${esc(t.nadi_center||"-")}</td><td>${esc(t.talk_code||"-")}</td></tr>`}).join("")||'<tr><td colspan="6" class="empty">Tiada rekod audience.</td></tr>';
+  const rows=audience.filter(a=>{const t=talks.find(x=>x.id===a.talk_id)||{};return(!id||a.talk_id===id)&&`${a.full_name} ${a.ic_number||""} ${a.email} ${t.title||""} ${t.nadi_center||""}`.toLowerCase().includes(q)});
+  document.querySelector("#audRows").innerHTML=rows.map(a=>{const t=talks.find(x=>x.id===a.talk_id)||{};return `<tr><td>${fmtStamp(a.created_at)}</td><td><b>${esc(a.full_name)}</b></td><td>${esc(a.ic_number||"-")}</td><td>${esc(a.email)}</td><td>${esc(t.title||"-")}</td><td>${esc(t.nadi_center||"-")}</td><td>${esc(t.talk_code||"-")}</td></tr>`}).join("")||'<tr><td colspan="7" class="empty">Tiada rekod audience.</td></tr>';
 }
 async function createTalk(e){
   e.preventDefault();const form=new FormData(e.currentTarget),btn=e.currentTarget.querySelector('button[type="submit"]');
@@ -205,7 +205,7 @@ async function showQR(id){
 async function copyQrLink(){try{await navigator.clipboard.writeText(document.querySelector("#qrLink").textContent);message("Pautan QR berjaya disalin.","success")}catch{message("Tidak dapat menyalin pautan. Salin pautan yang dipaparkan secara manual.","error")}}
 function downloadQr(){const a=document.createElement("a");a.download=`QR_${activeQrTalk?.talk_code||"PerwiraCyber"}.png`;a.href=document.querySelector("#qrCanvas").toDataURL("image/png");a.click()}
 function exportCSV(){
-  const rows=[["Tarikh Daftar","Nama Penuh","E-mel","Tajuk Talk","Pusat NADI","ID Talk"],...audience.map(a=>{const t=talks.find(x=>x.id===a.talk_id)||{};return[a.created_at,a.full_name,a.email,t.title||"",t.nadi_center||"",t.talk_code||""]})];
+  const rows=[["Tarikh Daftar","Nama Penuh","No. Kad Pengenalan","E-mel","Tajuk Talk","Pusat NADI","ID Talk"],...audience.map(a=>{const t=talks.find(x=>x.id===a.talk_id)||{};return[a.created_at,a.full_name,a.ic_number||"",a.email,t.title||"",t.nadi_center||"",t.talk_code||""]})];
   const csv=rows.map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
   const blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="Perwira_Cyber_Audience.csv";a.click();URL.revokeObjectURL(a.href);
 }
@@ -218,13 +218,15 @@ async function publicCheckin(id){
   if(talk.status!=="active"){body.innerHTML="<h1>Pendaftaran ditutup</h1><p class='sub'>Pendaftaran untuk talk ini telah ditutup. Terima kasih.</p>";return}
   body.innerHTML=`<h1>Borang Kehadiran Audience</h1><p class="sub">${esc(talk.title)}<br>${esc(talk.nadi_center)} · ${dateMY(talk.talk_date)} · ${esc(talk.talk_code)}</p>
     <form id="checkinForm"><div class="field"><label>Nama penuh *</label><input name="name" required maxlength="150" autocomplete="name" placeholder="Nama seperti dalam sijil"></div>
+    <div class="field"><label>No. Kad Pengenalan *</label><input name="ic" type="text" required maxlength="14" inputmode="numeric" autocomplete="off" placeholder="Contoh: 900101-10-1234" pattern="[0-9]{6}-?[0-9]{2}-?[0-9]{4}" title="Masukkan 12 digit nombor IC, dengan atau tanpa tanda sempang"></div>
     <div class="field"><label>Alamat e-mel *</label><input name="email" type="email" required maxlength="254" autocomplete="email" placeholder="nama@email.com"></div>
     <button class="primary" type="submit">Hantar Kehadiran</button></form>
-    <p class="sub" style="font-size:11px;margin-top:16px">Maklumat digunakan untuk rekod penyertaan Talk Perwira Cyber. Dengan menghantar borang ini, anda bersetuju maklumat diproses bagi tujuan tersebut.</p>`;
+    <p class="sub" style="font-size:11px;margin-top:16px">Nama, nombor IC dan e-mel digunakan untuk rekod penyertaan Talk Perwira Cyber sahaja. Dengan menghantar borang ini, anda bersetuju maklumat diproses bagi tujuan tersebut.</p>`;
   document.querySelector("#checkinForm").addEventListener("submit",async e=>{
     e.preventDefault();const f=new FormData(e.currentTarget),button=e.currentTarget.querySelector("button");
     button.disabled=true;button.textContent="Menghantar...";
-    const {error:insertError}=await supabase.from("audience_attendance").insert({talk_id:id,full_name:f.get("name").trim(),email:f.get("email").trim().toLowerCase()});
+    const icNumber=f.get("ic").trim().replace(/-/g,"");
+    const {error:insertError}=await supabase.from("audience_attendance").insert({talk_id:id,full_name:f.get("name").trim(),ic_number:icNumber,email:f.get("email").trim().toLowerCase()});
     if(insertError){
       const msg=insertError.code==="23505"?"E-mel ini sudah didaftarkan untuk talk ini.":insertError.message;
       const old=document.querySelector("#checkinError");if(old)old.remove();
