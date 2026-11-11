@@ -217,7 +217,7 @@ async function publicCheckin(id){
   if(error||!talk){body.innerHTML="<h1>Talk tidak ditemui</h1><p class='sub'>Pautan QR tidak sah atau talk tidak tersedia.</p>";return}
   if(talk.status!=="active"){body.innerHTML="<h1>Pendaftaran ditutup</h1><p class='sub'>Pendaftaran untuk talk ini telah ditutup. Terima kasih.</p>";return}
   body.innerHTML=`<h1>Borang Kehadiran Audience</h1><p class="sub">${esc(talk.title)}<br>${esc(talk.nadi_center)} · ${dateMY(talk.talk_date)} · ${esc(talk.talk_code)}</p>
-    <form id="checkinForm"><div class="field"><label>Nama penuh *</label><input name="name" required maxlength="150" autocomplete="name" placeholder="Nama seperti dalam sijil"></div>
+    <form id="checkinForm"><div class="field"><label>Nama penuh *</label><input name="name" required maxlength="150" autocomplete="name" placeholder="Nama seperti dalam Kad Pengenalan"></div>
     <div class="field"><label>No. Kad Pengenalan *</label><input name="ic" type="text" required maxlength="14" inputmode="numeric" autocomplete="off" placeholder="Contoh: 900101-10-1234" pattern="[0-9]{6}-?[0-9]{2}-?[0-9]{4}" title="Masukkan 12 digit nombor IC, dengan atau tanpa tanda sempang"></div>
     <div class="field"><label>Alamat e-mel *</label><input name="email" type="email" required maxlength="254" autocomplete="email" placeholder="nama@email.com"></div>
     <button class="primary" type="submit">Hantar Kehadiran</button></form>
