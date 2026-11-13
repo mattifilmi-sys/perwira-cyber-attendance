@@ -86,8 +86,33 @@ function shell() {
         <div class="tablewrap"><table><thead><tr><th>ID</th><th>Tajuk Talk</th><th>Pusat NADI</th><th>Penyampai</th><th>Tarikh</th><th>Audience</th><th>Status</th><th>Tindakan</th></tr></thead><tbody id="talkRows"></tbody></table></div>
       </div></section>
       <section id="audience" class="view"><div class="panel">
-        <div class="panelhead"><div><h2>Rekod Audience</h2><p>Semua pendaftaran audience daripada setiap talk.</p></div><button class="secondary" id="exportBtn">⇩ Eksport CSV</button></div>
-        <div class="toolbar"><input id="audSearch" placeholder="Cari nama, e-mel atau Pusat NADI..."><select id="audTalk"><option value="">Semua talk</option></select></div>
+
+<div class="panelhead">
+  <div>
+    <h2>Rekod Audience</h2>
+    <p>Semua pendaftaran audience daripada setiap talk.</p>
+  </div>
+
+  <div style="display:flex; gap:10px;">
+    <button class="secondary" id="deleteSelectedBtn" type="button">
+      🗑 Padam Terpilih
+    </button>
+
+    <button class="secondary" id="exportBtn" type="button">
+      ⇩ Eksport CSV
+    </button>
+  </div>
+</div>
+
+<div class="toolbar">
+  <input id="audSearch" placeholder="Cari nama, e-mel atau Pusat NADI...">
+  <select id="audTalk">
+    <option value="">Semua talk</option>
+  </select>
+  <button class="secondary" id="deleteSelectedBtn" type="button">
+    🗑 Padam Terpilih
+  </button>
+</div>
 
 <div class="tablewrap">
   <table>
@@ -135,9 +160,11 @@ function shell() {
   document.querySelector("#talkForm").addEventListener("submit",createTalk);
   document.querySelector("#talkSearch").addEventListener("input",renderTalks);
   document.querySelector("#talkStatus").addEventListener("change",renderTalks);
-  document.querySelector("#audSearch").addEventListener("input",renderAudience);
-  document.querySelector("#audTalk").addEventListener("change",renderAudience);
+document.querySelector("#exportBtn").addEventListener("click",exportCSV);  document.querySelector("#audTalk").addEventListener("change",renderAudience);
+document.querySelector("#deleteSelectedBtn")
+  .addEventListener("click", deleteSelectedAudience);
   document.querySelector("#exportBtn").addEventListener("click",exportCSV);
+  document.querySelector("#deleteSelectedBtn").addEventListener("click",deleteSelectedAudience);
   document.querySelector("#copyQrLink").addEventListener("click",copyQrLink);
   document.querySelector("#downloadQr").addEventListener("click",downloadQr);
 }
@@ -223,7 +250,83 @@ if (selectAll) {
 }
 }
 
+
+async function deleteSelectedAudience() {
+  const selected = [
+    ...document.querySelectorAll(".aud-select:checked")
+  ];
+
+  const ids = selected.map(cb => cb.value).filter(Boolean);
+
+  if (ids.length === 0) {
+    message("Sila pilih sekurang-kurangnya satu rekod.", "error");
+    return;
+  }
+
+  if (!confirm(`Anda pasti mahu memadam ${ids.length} rekod audience?`)) {
+    return;
+  }
+
+  const btn = document.querySelector("#deleteSelectedBtn");
+  btn.disabled = true;
+  btn.textContent = "Memadam...";
+
+  try {
+    const { error } = await supabase
+      .from("audience_attendance")
+      .delete()
+      .in("id", ids);
+
+    if (error) throw error;
+
+    await loadData();
+
+    message(`${ids.length} rekod berjaya dipadam.`, "success");
+  } catch (err) {
+    message("Gagal memadam: " + err.message, "error");
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🗑 Padam Terpilih";
+  }
+}
 async function createTalk(e){
+  
+
+
+  const confirmDelete = confirm(
+    `Anda pasti mahu memadam ${ids.length} rekod audience yang dipilih? Tindakan ini tidak boleh dibatalkan.`
+  );
+
+  if (!confirmDelete) return;
+
+  const btn = document.querySelector("#deleteSelectedBtn");
+  btn.disabled = true;
+  btn.textContent = "Memadam...";
+
+  try {
+    const { error } = await supabase
+      .from("audience_attendance")
+      .delete()
+      .in("id", ids);
+
+    if (error) throw error;
+
+    await loadData();
+
+    message(
+      `${ids.length} rekod audience berjaya dipadam.`,
+      "success"
+    );
+
+  } catch (error) {
+    message("Gagal memadam rekod: " + error.message, "error");
+
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🗑 Padam Terpilih";
+  }
+}
+
   e.preventDefault();const form=new FormData(e.currentTarget),btn=e.currentTarget.querySelector('button[type="submit"]');
   btn.disabled=true;btn.textContent="Menyimpan...";
   try{
@@ -236,7 +339,7 @@ async function createTalk(e){
     closeModal("createModal");await loadData();showQR(data.id);message(`Talk ${code} berjaya disimpan.`, "success");
   }catch(err){message("Tidak berjaya menyimpan talk: "+err.message,"error")}
   finally{btn.disabled=false;btn.textContent="Simpan & Jana QR"}
-}
+
 async function toggleStatus(id){
   const t=talks.find(x=>x.id===id);if(!t)return;
   const next=t.status==="active"?"closed":"active";
