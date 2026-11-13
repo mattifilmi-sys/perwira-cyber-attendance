@@ -88,7 +88,24 @@ function shell() {
       <section id="audience" class="view"><div class="panel">
         <div class="panelhead"><div><h2>Rekod Audience</h2><p>Semua pendaftaran audience daripada setiap talk.</p></div><button class="secondary" id="exportBtn">⇩ Eksport CSV</button></div>
         <div class="toolbar"><input id="audSearch" placeholder="Cari nama, e-mel atau Pusat NADI..."><select id="audTalk"><option value="">Semua talk</option></select></div>
-        <div class="tablewrap"><table><thead><tr><th>Tarikh Daftar</th><th>Nama Penuh</th><th>No. Kad Pengenalan</th><th>E-mel</th><th>Tajuk Talk</th><th>Pusat NADI</th><th>ID Talk</th></tr></thead><tbody id="audRows"></tbody></table></div>
+
+<div class="tablewrap">
+  <table>
+    <thead>
+      <tr>
+        <th><input type="checkbox" id="selectAllAudience" title="Pilih semua"></th>
+        <th>Tarikh Daftar</th>
+        <th>Nama Penuh</th>
+        <th>No. Kad Pengenalan</th>
+        <th>E-mel</th>
+        <th>Tajuk Talk</th>
+        <th>Pusat NADI</th>
+        <th>ID Talk</th>
+      </tr>
+    </thead>
+    <tbody id="audRows"></tbody>
+  </table>
+</div>
       </div></section>
     </main>
   </div>
@@ -170,8 +187,42 @@ function renderAudience(){
   sel.value=old;
   const q=(document.querySelector("#audSearch").value||"").toLowerCase(),id=sel.value;
   const rows=audience.filter(a=>{const t=talks.find(x=>x.id===a.talk_id)||{};return(!id||a.talk_id===id)&&`${a.full_name} ${a.ic_number||""} ${a.email} ${t.title||""} ${t.nadi_center||""}`.toLowerCase().includes(q)});
-  document.querySelector("#audRows").innerHTML=rows.map(a=>{const t=talks.find(x=>x.id===a.talk_id)||{};return `<tr><td>${fmtStamp(a.created_at)}</td><td><b>${esc(a.full_name)}</b></td><td>${esc(a.ic_number||"-")}</td><td>${esc(a.email)}</td><td>${esc(t.title||"-")}</td><td>${esc(t.nadi_center||"-")}</td><td>${esc(t.talk_code||"-")}</td></tr>`}).join("")||'<tr><td colspan="7" class="empty">Tiada rekod audience.</td></tr>';
+
+document.querySelector("#audRows").innerHTML=rows.map(a=>{
+  const t=talks.find(x=>x.id===a.talk_id)||{};
+  return `<tr>
+    <td><input type="checkbox" class="aud-select" value="${esc(a.id)}"></td>
+    <td>${fmtStamp(a.created_at)}</td>
+    <td><b>${esc(a.full_name)}</b></td>
+    <td>${esc(a.ic_number||"-")}</td>
+    <td>${esc(a.email)}</td>
+    <td>${esc(t.title||"-")}</td>
+    <td>${esc(t.nadi_center||"-")}</td>
+    <td>${esc(t.talk_code||"-")}</td>
+  </tr>`;
+
+}).join("")||'<tr><td colspan="8" class="empty">Tiada rekod audience.</td></tr>';
+
+const selectAll = document.querySelector("#selectAllAudience");
+
+if (selectAll) {
+  selectAll.checked = false;
+
+  selectAll.onchange = () => {
+    document.querySelectorAll(".aud-select").forEach(cb => {
+      cb.checked = selectAll.checked;
+    });
+  };
+
+  document.querySelectorAll(".aud-select").forEach(cb => {
+    cb.onchange = () => {
+      const all = [...document.querySelectorAll(".aud-select")];
+      selectAll.checked = all.length > 0 && all.every(cb => cb.checked);
+    };
+  });
 }
+}
+
 async function createTalk(e){
   e.preventDefault();const form=new FormData(e.currentTarget),btn=e.currentTarget.querySelector('button[type="submit"]');
   btn.disabled=true;btn.textContent="Menyimpan...";
